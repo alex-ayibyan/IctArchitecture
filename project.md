@@ -60,7 +60,7 @@ Voor dit systeem gebruiken we een combinatie van **actor/action approach** en **
 
 | Actor        | Acties                                                                 |
 |--------------|------------------------------------------------------------------------|
-| **Gebruiker** | - Registreren / Inloggen<br>- Games beoordelen<br>- Collectie beheren (manueel of gekoppeld)<br>- Store voorkeuren instellen<br>- Notificaties instellen bij aanbiedingen<br>- Aanbevelingen raadplegen |
+| **Gebruiker** | - Registreren / Inloggen via OAuth<br>- Games beoordelen<br>- Collectie beheren (manueel of gekoppeld)<br>- Store voorkeuren instellen<br>- Notificaties instellen bij aanbiedingen<br>- Aanbevelingen raadplegen |
 | **Curator**   | - Dubbele of irrelevante games verwijderen<br>- Screenshots goedkeuren van gebruikers<br>- Metadata beheren |
 | **Publisher** | - Promo-informatie en trailers uploaden<br>- Eigen games beheren |
 | **Systeem**   | - Prijzen ophalen<br>- Nieuwe games detecteren<br>- Sales in de verf zetten<br>- Games taggen op basis van inhoud<br>- Aanbevelingen genereren obv gebruikersgedrag |
@@ -68,7 +68,7 @@ Voor dit systeem gebruiken we een combinatie van **actor/action approach** en **
 ### Logische Componenten (Services/Modules)
 
 - **Authenticatie & Gebruikersbeheer**
-  - Beheert login, gebruikersrollen
+  - Beheert login, OAuth, gebruikersrollen
 - **Gamecatalogus**
   - Opslag en weergave van alle games met metadata
 - **Prijsvergelijking**
@@ -82,7 +82,7 @@ Voor dit systeem gebruiken we een combinatie van **actor/action approach** en **
 - **Notificatie Service**
   - Waarschuwt gebruikers bij deals, nieuwe games of aanbevelingen
 - **Store Integratie**
-  - API-koppelingen met winkels zoals Steam, PS Store, etc.
+  - API-koppelingen met winkels zoals Steam, GOG, PS Store, etc.
 - **Curatie Module**
   - Goedkeuren/verwerpen van content, beheer van shovelware
 - **Monitoring & Telemetrie**
@@ -167,13 +167,34 @@ graph LR
 ## 5. Microservices Architectuur
 
 ### Opsplitsing in services
+Een microservice-architectuur biedt de mogelijkheid om het systeem op te splitsen in meerdere onafhankelijke services. Dit kan schaalbaarheid, onderhoudbaarheid en flexibiliteit ten goede komen. De belangrijkste services die we overwegen in de microservice-aanpak zijn:
+
+- **Authenticatie-service**: Deze service is verantwoordelijk voor het beheer van gebruikersidentiteit en autorisatie, bijvoorbeeld door gebruik te maken van OAuth voor externe logins.
+- **Prijsvergelijking-service**: Deze service haalt prijzen op van verschillende online winkels en vergelijkt deze.
+- **Gamecatalogus-service**: Deze service houdt de metadata van alle beschikbare games bij en biedt toegang tot game-informatie.
+- **Notificatie-service**: Deze service verstuurt meldingen naar gebruikers over kortingen, aanbiedingen, of nieuwe games.
+- **Collectiebeheer-service**: Beheert de persoonlijke collectie van de gebruiker, inclusief geïmporteerde games van verschillende platformen.
+- **Curatie-service**: Deze service is verantwoordelijk voor het goedkeuren of afwijzen van nieuwe game-informatie of content van gebruikers.
+- **Aanbeveling-service**: Deze service genereert aanbevelingen voor gebruikers op basis van hun gedrag en voorkeuren.
 
 ### Voor- en nadelen microservice-stijl
 
 #### Voordelen:
+- **Schaalbaarheid**: Elke service kan onafhankelijk worden geschaald afhankelijk van de behoefte. Bijvoorbeeld, de prijsvergelijkingsservice kan worden opgeschaald tijdens grote uitverkoopperioden.
+- **Flexibiliteit in technologie**: Elke service kan de technologie gebruiken die het beste past bij de functionaliteit. Bijvoorbeeld, de authenticatieservice kan OAuth gebruiken, terwijl de prijsvergelijkingsservice Python-scripts gebruikt om prijzen op te halen.
+
+- **Betere foutisolatie**: Als een microservice faalt, beïnvloedt dit niet direct de andere services. Dit maakt het systeem veerkrachtiger.
+
+- **Snellere ontwikkeling en implementatie**: Teams kunnen onafhankelijk aan verschillende services werken, wat zorgt voor sneller itereren en sneller kunnen implementeren.
 
 #### Nadelen:
+- **Complexiteit**: Het beheer van meerdere microservices vereist veel meer infrastructuur, zoals service discovery, load balancing en API-gateways.
 
+- **Netwerkcommunicatie**: Microservices communiceren via netwerken, wat extra latency en mogelijke problemen met netwerkfouten kan veroorzaken.
+
+- **Data-consistentie**: Het behouden van data-consistentie tussen microservices kan complex zijn, omdat elke service zijn eigen database heeft.
+
+- **Implementatiekosten**: De infrastructuur om meerdere microservices te beheren, zoals containers en orkestratieplatforms zoals Kubernetes, kan aanvankelijk kostbaar zijn.
 
 
 ### ADR's (Architectural Decision Records)
