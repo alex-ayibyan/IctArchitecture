@@ -199,11 +199,118 @@ Een microservice-architectuur biedt de mogelijkheid om het systeem op te splitse
 
 ### ADR's (Architectural Decision Records)
 
-- ADR 1:
-- ADR 2:
-- ADR 3:
-- ADR 4:
-- ADR 5:
+#### ADR 1: Gebruik van een monolithische architectuur in eerste implementatie
+**Status**: Accepted
+
+##### Context
+De eerste versie van het systeem vereist nog veel iteratie en snelle veranderingen. Teams zijn klein, het domein is nog niet stabiel en ontwikkelsnelheid heeft prioriteit. Complexe netwerkcommunicatie, observability en CI/CD zijn momenteel nog niet ingericht.
+
+##### Decision
+We starten met een monolithische architectuur, waarbij alle logische componenten binnen één gedeelde applicatie draaien.
+
+##### Consequences
+- Snellere ontwikkelcyclus  
+- Geen nood aan distributed tracing of netwerkdebugging  
+- Beperkte schaalbaarheid per component  
+- Lastiger refactoren zodra het domein groeit
+
+##### Governance
+We bewaken modulaire code-structuur binnen de monoliet via duidelijke package boundaries en CI-regels (zoals geen cross-domain imports).
+
+##### Notes
+Kan later opgesplitst worden in microservices zodra de modules stabieler zijn.
+
+------
+
+#### ADR 2: Gebruik van relationele database voor centrale opslag
+**Status**: Accepted
+
+##### Context
+Het systeem bevat relaties tussen gebruikers, games, platformen en ratings. We verwachten frequente query's met joins en filters.
+
+##### Decision
+We gebruiken PostgreSQL als centrale relationele database voor zowel de monolithische als microservices-opstelling.
+
+##### Consequences
+- Sterke ondersteuning voor relaties en transacties  
+- Bekende tooling en ondersteuning  
+- Verticaal schaalbaar; minder geschikt voor hoge loads per microservice zonder partitionering
+
+##### Governance
+ERD wordt bijgehouden in versiebeheer, wijzigingen in datamodel vereisen review met impact-analyse.
+
+##### Notes
+Kan later worden opgesplitst in meerdere databases bij overstap naar microservices.
+
+------
+
+#### ADR 3: Prijsupdates via periodieke polling
+**Status**: Accepted
+
+##### Context
+Externe API’s zoals Steam of GOG bieden geen event-driven integratie. We willen prijswijzigingen bijhouden maar niet blokkeren op API-beschikbaarheid.
+
+##### Decision
+We gebruiken een scheduler om dagelijks prijzen op te halen via polling.
+
+##### Consequences
+- Robuust tegen API-uitval  
+- Eenvoudig te implementeren  
+- Mogelijke vertraging in updates (afhankelijk van pollingfrequentie)  
+- Niet real-time
+
+##### Governance
+Scheduler logs worden gemonitord en failures geven alerts in onze observability stack (bijv. Prometheus + Grafana).
+
+##### Notes
+Supersedes eerdere notie om real-time events via webhook te ontvangen (niet ondersteund door stores).
+
+------
+
+#### ADR 4: Microservices-architectuur voor schaalbaarheid en resilience
+**Status**: Proposed
+
+##### Context
+Bij toenemende populariteit (bijv. via partnerschappen) willen we schaalbaarheid per functie en onafhankelijk kunnen deployen. De logische componenten zijn sterk gescheiden (prijsvergelijking, aanbevelingen, curatie...).
+
+##### Decision
+Voor de toekomstige versie schakelen we over naar een microservices-architectuur, waarbij elke module een eigen service wordt met eigen database (of schema).
+
+##### Consequences
+- Onafhankelijke schaalbaarheid per service  
+- Betere foutisolatie en resilience  
+- Hogere complexiteit in CI/CD en observability  
+- Netwerk- en latency issues tussen services
+
+##### Governance
+Elke service heeft een eigen repo met duidelijke contracts (API en data). Versiebeheer en backward compatibility worden expliciet bewaakt.
+
+##### Notes
+Supersedes ADR-001 zodra we overstappen naar productie op schaal.
+
+------
+
+#### ADR 5: Gebruik van Kubernetes voor microservice deploys
+**Status**: Proposed
+
+##### Context
+We willen een schaalbare en zelfherstellende omgeving voor onze microservices. Kubernetes is een industrieel standaardplatform dat automatische scaling, load balancing en monitoring ondersteunt.
+
+##### Decision
+Alle microservices worden gedeployed op een Kubernetes-cluster. We gebruiken Helm voor templating en namespaces voor domeinafscheiding.
+
+##### Consequences
+- Automatische scaling en resilience  
+- Integratie met observability tooling zoals Prometheus  
+- Initieel hogere leercurve  
+- Meer infrastructuurbeheer
+
+##### Governance
+CI-pipeline pusht automatisch naar het cluster, policies worden via RBAC en PodSecurityEnforcement gehandhaafd. Alerts bij failures via Prometheus/Alertmanager.
+
+##### Notes
+Beheerd via cloud (GKE of AKS), met fallback naar lokaal (minikube) voor testing.
+
 
 
 ## 6. Kubernetes Proof-of-Concept
