@@ -124,8 +124,15 @@ sequenceDiagram
 Een monolithische architectuur heeft de voorkeur voor de eerste versie van het systeem vanwege de eenvoud in de ontwikkeling, het onderhoud en de integratie van verschillende onderdelen. De monolithische aanpak maakt het mogelijk om snel een prototype te bouwen zonder de overhead van meerdere microservices, en biedt voordelen op het gebied van eenvoudiger testen, deployment en communicatie tussen de modules.
 
 #### Voordelen:
+- **Snelle ontwikkeling**: Omdat alle componenten in één applicatie zitten, is het makkelijker om snel nieuwe functies te ontwikkelen en te testen.
+- **Eenvoudig testen**: Aangezien de modules al dicht bij elkaar draaien, kunnen ze eenvoudiger worden getest zonder dat er uitgebreide inter-service communicatie nodig is.
+- **Eenvoudig deployment**: Je hoeft slechts één applicatie te deployen in plaats van meerdere microservices.
+- **Minder complexiteit**: Er is geen complexe netwerkcommunicatie of API-gateway nodig voor het communiceren tussen microservices.
 
 #### Nadelen:
+- **Beperkingen bij schaalbaarheid**: Naarmate het aantal gebruikers toeneemt, kan het moeilijker worden om de monolithische applicatie efficiënt te schalen.
+- **Moeilijker onderhoud op lange termijn**: Als de applicatie groeit, kan het steeds lastiger worden om het geheel overzichtelijk en beheersbaar te houden.
+- **Beperkingen in technologiekeuze**: Alle componenten moeten dezelfde technologie stack gebruiken, wat flexibiliteit in technologiebeperkingen kan verminderen.
 
 ---
 
@@ -135,10 +142,26 @@ In de monolithische architectuur worden de logische componenten van het systeem 
 
 | Logische Component    | Fysieke Implementatie                                  |
 |-----------------------|--------------------------------------------------------|
-
+| **Authenticatie**      | Wordt in dezelfde applicatie behandeld met OAuth integratie. |
+| **Gamecatalogus**      | Eén database wordt gebruikt voor het opslaan van game-informatie en metadata. |
+| **Prijsvergelijking**  | Integratie van externe APIs binnen dezelfde serveromgeving om prijzen op te halen. |
+| **Collectiebeheer**    | Gebruikers kunnen hun collectie beheren binnen één enkele database. |
+| **Aanbevelingen**      | Implementatie van aanbevelingsalgoritmes binnen de monolithische applicatie zelf. |
+| **Notificaties**       | De notificatiediensten worden geïmplementeerd als een intern systeem zonder aparte microservice. |
+| **Curatie Module**     | Administratie wordt beheerd binnen dezelfde applicatie en toegangscontrole via beheerderrollen. |
 
 #### Mermaid-diagram
 
+```mermaid
+graph LR
+    A[Authenticatie] --> B[Gamecatalogus]
+    A --> C[Prijsvergelijking]
+    A --> D[Collectiebeheer]
+    B --> E[Aanbevelingen]
+    C --> F[Notificaties]
+    D --> F
+    F --> G[Curatie Module]
+```
 
 
 ## 5. Microservices Architectuur
