@@ -54,31 +54,68 @@ Omdat gebruikers data van externe platformen koppelen, ratings geven en persoonl
 
 ## 3. Logische Componenten
 
-Voor dit systeem gebruiken we een combinatie van actor/action approach en workflow approach, omdat er zowel veel interactie is tussen gebruikers en het systeem als achterliggende processen die zelfstandig lopen (zoals prijsupdating, aanbevelingen genereren, etc.).
+Voor dit systeem gebruiken we een combinatie van **actor/action approach** en **workflow approach**, omdat er zowel veel interactie is tussen gebruikers en het systeem als achterliggende processen die zelfstandig lopen (zoals prijsupdating, aanbevelingen genereren, etc.).
 
 ### Actoren en hun acties
 
 | Actor        | Acties                                                                 |
 |--------------|------------------------------------------------------------------------|
-
+| **Gebruiker** | - Registreren / Inloggen<br>- Games beoordelen<br>- Collectie beheren (manueel of gekoppeld)<br>- Store voorkeuren instellen<br>- Notificaties instellen bij aanbiedingen<br>- Aanbevelingen raadplegen |
+| **Curator**   | - Dubbele of irrelevante games verwijderen<br>- Screenshots goedkeuren van gebruikers<br>- Metadata beheren |
+| **Publisher** | - Promo-informatie en trailers uploaden<br>- Eigen games beheren |
+| **Systeem**   | - Prijzen ophalen<br>- Nieuwe games detecteren<br>- Sales in de verf zetten<br>- Games taggen op basis van inhoud<br>- Aanbevelingen genereren obv gebruikersgedrag |
 
 ### Logische Componenten (Services/Modules)
 
-- ** **
-- ** **
-- ** **
-- ** **
-- ** **
+- **Authenticatie & Gebruikersbeheer**
+  - Beheert login, gebruikersrollen
+- **Gamecatalogus**
+  - Opslag en weergave van alle games met metadata
+- **Prijsvergelijking**
+  - Houdt actuele prijzen en prijsgeschiedenis bij
+- **Collectiebeheer**
+  - Persoonlijke gamecollecties, import van externe platforms
+- **Media & Reviews**
+  - Beheren van screenshots, trailers en gebruikersratings
+- **Aanbevelingssysteem**
+  - Algoritme dat suggesties doet op basis van data
+- **Notificatie Service**
+  - Waarschuwt gebruikers bij deals, nieuwe games of aanbevelingen
+- **Store Integratie**
+  - API-koppelingen met winkels zoals Steam, PS Store, etc.
+- **Curatie Module**
+  - Goedkeuren/verwerpen van content, beheer van shovelware
+- **Monitoring & Telemetrie**
+  - Logging, metrics, systeemstatus
 
 ### Workflows
 
 #### 1. Game wordt toegevoegd aan het systeem
 ```mermaid
+sequenceDiagram
+    participant Store API
+    participant Store Integratie
+    participant Gamecatalogus
+    participant Curator
 
+    Store API->>Store Integratie: Nieuwe game beschikbaar
+    Store Integratie->>Gamecatalogus: Voeg game toe (pending review)
+    Gamecatalogus->>Curator: Vraag goedkeuring
+    Curator-->>Gamecatalogus: Goedkeuring of afwijzing
 ```
 #### 2. Prijswijziging verwerken
 ```mermaid
+sequenceDiagram
+    participant Scheduler
+    participant Store Integratie
+    participant Prijsvergelijking
+    participant Notificatie Service
+    participant Gebruiker
 
+    Scheduler->>Store Integratie: Vraag prijzen op
+    Store Integratie->>Prijsvergelijking: Update prijs
+    Prijsvergelijking->>Notificatie Service: Trigger alerts
+    Notificatie Service-->>Gebruiker: "Game X is nu €29,99!"
 ```
 
 ## 4. Monolithische Architectuur
