@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            margin-bottom: 25px;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-2px);
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            font-size: 1.5em;
+        }
+
+        .auth-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .auth-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .auth-form h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #51cf66, #40c057);
+        }
+
+        .response-box {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .response-box.success {
+            border-color: #51cf66;
+            background: #f8fff9;
+        }
+
+        .response-box.error {
+            border-color: #ff6b6b;
+            background: #fff8f8;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .game-card h4 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .game-card p {
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .price-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .price-card {
+            background: linear-gradient(135deg, #e9ecef, #f8f9fa);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .price-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .price-card h4 {
+            margin-bottom: 10px;
+            color: #495057;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .price-card .price {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .price-card .discount {
+            color: #51cf66;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-online {
+            background: #d4f8d4;
+            color: #2b8a3e;
+        }
+
+        .status-offline {
+            background: #ffe0e0;
+            color: #c92a2a;
+        }
+
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls-row input {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Game Portal</h1>
+            <p>Your comprehensive gaming companion</p>
+        </div>
+
+        <div id="user-info" class="user-info" style="display: none;">
+            <strong>Welcome back!</strong> <span id="user-name"></span>
+            <button class="btn btn-small btn-danger" onclick="logout()" style="float: right;">Logout</button>
+        </div>
+
+        <div class="section" id="auth-section">
+            <h2>🔐 Authentication</h2>
+            <div class="auth-container">
+                <div class="auth-form">
+                    <h3>Register</h3>
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="reg-username" placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="reg-email" placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="reg-password" placeholder="Enter password">
+                    </div>
+                    <button class="btn" onclick="register()">Create Account</button>
+                </div>
+                <div class="auth-form">
+                    <h3>Login</h3>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="login-email" placeholder="Enter email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="Enter password">
+                    </div>
+                    <button class="btn" onclick="login()">Sign In</button>
+                </div>
+            </div>
+            <div id="auth-response" class="response-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>🎮 Game Catalog</h2>
+            <div class="controls-row">
+                <button class="btn" onclick="loadGames()">Load All Games</button>
+                <button class="btn" onclick="getGameById()">Search by ID</button>
+                <input type="text" id="game-id" placeholder="Game ID (e.g., 1)">
+            </div>
+            
+            <div id="games-container"></div>
+            <div id="games-response" class="response-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>💰 Price Comparison</h2>
+            <div class="controls-row">
+                <input type="text" id="price-game-id" placeholder="Game ID (e.g., 1)" value="1">
+                <button class="btn" onclick="getPrices()">Compare Prices</button>
+                <button class="btn btn-success" onclick="getBestPrice()">Find Best Deal</button>
+                <button class="btn" onclick="getSales()">Current Sales</button>
+                <button class="btn" onclick="getPriceHistory()">Price History</button>
+            </div>
+            
+            <div id="price-results"></div>
+            <div id="price-response" class="response-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>📚 My Game Collection</h2>
+            <div class="controls-row">
+                <input type="text" id="user-id" placeholder="User ID" value="user1">
+                <button class="btn" onclick="getUserCollection()">View Collection</button>
+                <button class="btn" onclick="getCollectionStats()">Show Stats</button>
+            </div>
+            
+            <h3>Add Game to Collection</h3>
+            <div class="controls-row">
+                <input type="text" id="add-game-id" placeholder="Game ID">
+                <input type="text" id="add-game-title" placeholder="Game Title">
+                <select id="add-game-platform">
+                    <option value="PC">PC</option>
+                    <option value="PS5">PlayStation 5</option>
+                    <option value="PS4">PlayStation 4</option>
+                    <option value="Xbox Series X">Xbox Series X</option>
+                    <option value="Xbox One">Xbox One</option>
+                    <option value="Switch">Nintendo Switch</option>
+                </select>
+                <select id="add-game-status">
+                    <option value="wishlist">Wishlist</option>
+                    <option value="in-progress">Playing</option>
+                    <option value="completed">Completed</option>
+                    <option value="dropped">Dropped</option>
+                </select>
+                <button class="btn btn-success" onclick="addGameToCollection()">Add Game</button>
+            </div>
+            
+            <div id="collection-results"></div>
+            <div id="collection-response" class="response-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>💊 System Health</h2>
+            <button class="btn" onclick="checkAllHealth()">Check All Services</button>
+            <div id="health-status" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const SERVICES = {
+            auth: 'http://gameportal.local',
+            catalog: 'http://gameportal.local', 
+            prices: 'http://gameportal.local',
+            collection: 'http://gameportal.local'
+        };
+
+        let authToken = localStorage.getItem('gamePortalToken');
+        let currentUser = JSON.parse(localStorage.getItem('gamePortalUser') || 'null');
+
+        window.onload = function() {
+            updateAuthUI();
+            checkAllHealth();
+        };
+
+        function updateAuthUI() {
+            const authSection = document.getElementById('auth-section');
+            const userInfo = document.getElementById('user-info');
+            
+            if (authToken && currentUser) {
+                authSection.style.display = 'none';
+                userInfo.style.display = 'block';
+                document.getElementById('user-name').textContent = currentUser.username || currentUser.email;
+            } else {
+                authSection.style.display = 'block';
+                userInfo.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('gamePortalToken');
+            localStorage.removeItem('gamePortalUser');
+            updateAuthUI();
+            showResponse('auth-response', 'Logged out successfully', 'success');
+        }
+
+        async function apiCall(service, endpoint, options = {}) {
+            const loadingId = 'loading-' + Date.now();
+            try {
+                if (options.showLoading !== false) {
+                    showLoading(loadingId);
+                }
+
+                const headers = { 'Content-Type': 'application/json' };
+                if (authToken && options.requireAuth !== false) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+
+                const url = `${SERVICES[service]}${endpoint}`;
+                const response = await fetch(url, {
+                    ...options,
+                    headers: { ...headers, ...options.headers }
+                });
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = text;
+                }
+
+                return { ok: response.ok, status: response.status, data };
+            } catch (error) {
+                return { ok: false, error: error.message };
+            } finally {
+                hideLoading(loadingId);
+            }
+        }
+
+        function showLoading(id) {
+            const loader = document.createElement('div');
+            loader.id = id;
+            loader.innerHTML = '<div class="loading"></div>Processing...';
+            loader.style.cssText = 'position: fixed; top: 20px; right: 20px; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000;';
+            document.body.appendChild(loader);
+        }
+
+        function hideLoading(id) {
+            const loader = document.getElementById(id);
+            if (loader) loader.remove();
+        }
+
+        function showResponse(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `response-box ${type}`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        async function register() {
+            const username = document.getElementById('reg-username').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            if (!username || !email || !password) {
+                showResponse('auth-response', 'Please fill all fields', 'error');
+                return;
+            }
+
+            const result = await apiCall('auth', '/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({ username, email, password }),
+                requireAuth: false
+            });
+
+            if (result.ok && result.data.token) {
+                authToken = result.data.token;
+                currentUser = result.data.user;
+                localStorage.setItem('gamePortalToken', authToken);
+                localStorage.setItem('gamePortalUser', JSON.stringify(currentUser));
+                updateAuthUI();
+                showResponse('auth-response', `Registration successful! Welcome ${currentUser.username}!`, 'success');
+                
+                document.getElementById('reg-username').value = '';
+                document.getElementById('reg-email').value = '';
+                document.getElementById('reg-password').value = '';
+            } else {
+                showResponse('auth-response', `Registration failed: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                showResponse('auth-response', 'Please fill email and password', 'error');
+                return;
+            }
+
+            const result = await apiCall('auth', '/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password }),
+                requireAuth: false
+            });
+
+            if (result.ok && result.data.token) {
+                authToken = result.data.token;
+                currentUser = result.data.user;
+                localStorage.setItem('gamePortalToken', authToken);
+                localStorage.setItem('gamePortalUser', JSON.stringify(currentUser));
+                updateAuthUI();
+                showResponse('auth-response', `Login successful! Welcome back ${currentUser.username}!`, 'success');
+                
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+            } else {
+                showResponse('auth-response', `Login failed: ${result.data?.message || result.error}`, 'error');
+            }
+        }
+
+        async function loadGames() {
+            const result = await apiCall('catalog', '/games', { requireAuth: false });
+            
+            if (result.ok) {
+                displayGames(result.data);
+                showResponse('games-response', `Successfully loaded ${result.data.length} games`, 'success');
+            } else {
+                showResponse('games-response', `Error loading games: ${result.error}`, 'error');
+            }
+        }
+
+        async function getGameById() {
+            const gameId = document.getElementById('game-id').value;
+            if (!gameId) {
+                showResponse('games-response', 'Please enter a game ID', 'error');
+                return;
+            }
+
+            const result = await apiCall('catalog', `/games/${gameId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayGames([result.data]);
+                showResponse('games-response', 'Game found successfully', 'success');
+            } else {
+                showResponse('games-response', `Game not found: ${result.data?.error || result.error}`, 'error');
+            }
+        }
+
+        function displayGames(games) {
+            const container = document.getElementById('games-container');
+            
+            if (!games || games.length === 0) {
+                container.innerHTML = '<p>No games to display</p>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="games-grid">' + 
+                games.map(game => `
+                    <div class="game-card">
+                        <h4>${game.title}</h4>
+                        <p><strong>Price:</strong> <span class="price">$${game.price}</span></p>
+                        <p><strong>Platforms:</strong> ${Array.isArray(game.platforms) ? game.platforms.join(', ') : game.platforms}</p>
+                        <p><strong>Genres:</strong> ${Array.isArray(game.genres) ? game.genres.join(', ') : game.genres}</p>
+                        <p><strong>Release:</strong> ${game.releaseDate}</p>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-small" onclick="getGamePrices('${game.id}')">Check Prices</button>
+                            <button class="btn btn-small btn-success" onclick="quickAddToCollection('${game.id}', '${game.title}')">Add to Collection</button>
+                        </div>
+                    </div>
+                `).join('') + '</div>';
+        }
+
+        async function getPrices() {
+            const gameId = document.getElementById('price-game-id').value || '1';
+            const result = await apiCall('prices', `/prices/${gameId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayPrices(result.data);
+                showResponse('price-response', 'Price comparison loaded successfully', 'success');
+            } else {
+                showResponse('price-response', `Error fetching prices: ${result.error}`, 'error');
+            }
+        }
+
+        async function getBestPrice() {
+            const gameId = document.getElementById('price-game-id').value || '1';
+            const result = await apiCall('prices', `/best-price/${gameId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                const bestPrice = result.data.bestPrice;
+                document.getElementById('price-results').innerHTML = `
+                    <div style="background: #d4edda; padding: 20px; border-radius: 10px; text-align: center;">
+                        <h3>🏆 Best Deal Found!</h3>
+                        <p><strong>Store:</strong> ${bestPrice.store.toUpperCase()}</p>
+                        <p><strong>Price:</strong> <span style="font-size: 1.5em; color: #28a745;">$${bestPrice.price}</span></p>
+                        ${bestPrice.discount ? `<p style="color: #28a745;">💰 ON SALE! Was $${bestPrice.originalPrice}</p>` : ''}
+                    </div>
+                `;
+                showResponse('price-response', 'Best price found!', 'success');
+            } else {
+                showResponse('price-response', `Error finding best price: ${result.error}`, 'error');
+            }
+        }
+
+        async function getSales() {
+            const result = await apiCall('prices', '/sales', { requireAuth: false });
+            
+            if (result.ok && result.data.length > 0) {
+                document.getElementById('price-results').innerHTML = 
+                    '<h3>🔥 Current Sales</h3>' +
+                    result.data.map(sale => `
+                        <div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #28a745;">
+                            <h4>${sale.name} - ${sale.store.toUpperCase()}</h4>
+                            <p><strong>Duration:</strong> ${sale.startDate} to ${sale.endDate}</p>
+                            <div style="margin-top: 10px;">
+                                ${sale.games.map(game => `
+                                    <div style="margin: 5px 0; padding: 8px; background: white; border-radius: 4px;">
+                                        <strong>${game.title}</strong> - ${game.discount} off 
+                                        <span style="color: #28a745; font-weight: bold;">${game.discountedPrice}</span>
+                                        <span style="text-decoration: line-through; color: #666;">${game.originalPrice}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                showResponse('price-response', 'Current sales loaded successfully', 'success');
+            } else {
+                showResponse('price-response', 'No active sales found', 'info');
+            }
+        }
+
+        async function getPriceHistory() {
+            const gameId = document.getElementById('price-game-id').value || '1';
+            const result = await apiCall('prices', `/price-history/${gameId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                document.getElementById('price-results').innerHTML = `
+                    <h3>📈 Price History for Game ${gameId}</h3>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <p><strong>Store:</strong> ${result.data.store.toUpperCase()}</p>
+                        <div style="margin-top: 10px;">
+                            ${result.data.history.map(entry => `
+                                <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #dee2e6;">
+                                    <span>${entry.date}</span>
+                                    <span style="font-weight: bold; color: #667eea;">${entry.price}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                showResponse('price-response', 'Price history loaded successfully', 'success');
+            } else {
+                showResponse('price-response', `Error loading price history: ${result.error}`, 'error');
+            }
+        }
+
+        async function getGamePrices(gameId) {
+            document.getElementById('price-game-id').value = gameId;
+            await getPrices();
+        }
+
+        function displayPrices(priceData) {
+            const container = document.getElementById('price-results');
+            
+            if (!priceData.prices || priceData.prices.length === 0) {
+                container.innerHTML = '<p>No prices found for this game</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h3>💰 Price Comparison for Game ${priceData.gameId}</h3>
+                <div class="price-comparison">
+                    ${priceData.prices.map(price => `
+                        <div class="price-card">
+                            <h4>${price.store}</h4>
+                            <div class="price">${price.price}</div>
+                            ${price.discount ? `
+                                <div class="discount">
+                                    🔥 ON SALE!<br>
+                                    Was ${price.originalPrice}
+                                </div>
+                            ` : ''}
+                            <p style="font-size: 0.8em; margin-top: 8px;">Currency: ${price.currency}</p>
+                        </div>
+                    `).join('')}
+                </div>
+                ${priceData.errors && priceData.errors.length > 0 ? `
+                    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+                        <strong>Some stores couldn't be reached:</strong><br>
+                        ${priceData.errors.map(err => `${err.store}: ${err.error}`).join('<br>')}
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // Collection Management Functions
+        async function getUserCollection() {
+            const userId = document.getElementById('user-id').value || 'user1';
+            const result = await apiCall('collection', `/collection/${userId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayCollection(result.data);
+                showResponse('collection-response', 'Collection loaded successfully', 'success');
+            } else {
+                showResponse('collection-response', `Error loading collection: ${result.error}`, 'error');
+            }
+        }
+
+        async function getCollectionStats() {
+            const userId = document.getElementById('user-id').value || 'user1';
+            const result = await apiCall('collection', `/collection/${userId}/stats`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayStats(result.data);
+                showResponse('collection-response', 'Statistics loaded successfully', 'success');
+            } else {
+                showResponse('collection-response', `Error loading stats: ${result.error}`, 'error');
+            }
+        }
+
+        async function addGameToCollection() {
+            const userId = document.getElementById('user-id').value || 'user1';
+            const gameData = {
+                id: document.getElementById('add-game-id').value,
+                title: document.getElementById('add-game-title').value,
+                platform: document.getElementById('add-game-platform').value,
+                status: document.getElementById('add-game-status').value,
+                store: "Manual Add",
+                playtime: 0
+            };
+
+            if (!gameData.id || !gameData.title) {
+                showResponse('collection-response', 'Please fill game ID and title', 'error');
+                return;
+            }
+
+            const result = await apiCall('collection', `/collection/${userId}/games`, {
+                method: 'POST',
+                body: JSON.stringify(gameData),
+                requireAuth: false
+            });
+
+            if (result.ok) {
+                showResponse('collection-response', 'Game added to collection successfully!', 'success');
+                // Clear form
+                document.getElementById('add-game-id').value = '';
+                document.getElementById('add-game-title').value = '';
+                // Refresh collection display
+                getUserCollection();
+            } else {
+                showResponse('collection-response', `Error adding game: ${result.data?.error || result.error}`, 'error');
+            }
+        }
+
+        async function quickAddToCollection(gameId, gameTitle) {
+            document.getElementById('add-game-id').value = gameId;
+            document.getElementById('add-game-title').value = gameTitle;
+            await addGameToCollection();
+        }
+
+        function displayCollection(collection) {
+            const container = document.getElementById('collection-results');
+            
+            if (!collection.games || collection.games.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No games in collection yet. Add some games to get started!</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h3>🎮 Your Game Collection (${collection.games.length} games)</h3>
+                <div class="games-grid">
+                    ${collection.games.map(game => `
+                        <div class="game-card">
+                            <h4>${game.title}</h4>
+                            <p><strong>Platform:</strong> ${game.platform}</p>
+                            <p><strong>Store:</strong> ${game.store}</p>
+                            <p><strong>Status:</strong> 
+                                <span style="
+                                    padding: 3px 8px; 
+                                    border-radius: 12px; 
+                                    font-size: 0.8em; 
+                                    background: ${getStatusColor(game.status)}; 
+                                    color: white;
+                                ">${game.status}</span>
+                            </p>
+                            <p><strong>Playtime:</strong> ${game.playtime || 0} hours</p>
+                            <p><strong>Added:</strong> ${game.addedDate}</p>
+                            <div style="margin-top: 15px;">
+                                <button class="btn btn-small" onclick="updateGameStatus('${game.id}')">Update Status</button>
+                                <button class="btn btn-small btn-danger" onclick="removeFromCollection('${game.id}')">Remove</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function displayStats(stats) {
+            const container = document.getElementById('collection-results');
+            
+            container.innerHTML = `
+                <h3>📊 Collection Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalGames}</div>
+                        <div class="stat-label">Total Games</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalPlaytime}</div>
+                        <div class="stat-label">Total Hours</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.round(stats.totalPlaytime / (stats.totalGames || 1))}</div>
+                        <div class="stat-label">Avg Hours/Game</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>By Platform</h4>
+                        ${Object.entries(stats.byPlatform).map(([platform, count]) => `
+                            <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                                <span>${platform}</span>
+                                <span style="font-weight: bold;">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>By Status</h4>
+                        ${Object.entries(stats.byStatus).map(([status, count]) => `
+                            <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                                <span>${status}</span>
+                                <span style="font-weight: bold;">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'wishlist': '#6c757d',
+                'in-progress': '#007bff',
+                'completed': '#28a745',
+                'dropped': '#dc3545'
+            };
+            return colors[status] || '#6c757d';
+        }
+
+        async function updateGameStatus(gameId) {
+            const newStatus = prompt('Enter new status (wishlist, in-progress, completed, dropped):');
+            if (!newStatus) return;
+
+            const userId = document.getElementById('user-id').value || 'user1';
+            const result = await apiCall('collection', `/collection/${userId}/games/${gameId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status: newStatus }),
+                requireAuth: false
+            });
+
+            if (result.ok) {
+                showResponse('collection-response', 'Game status updated successfully!', 'success');
+                getUserCollection(); // Refresh display
+            } else {
+                showResponse('collection-response', `Error updating status: ${result.error}`, 'error');
+            }
+        }
+
+        async function removeFromCollection(gameId) {
+            if (!confirm('Are you sure you want to remove this game from your collection?')) {
+                return;
+            }
+
+            const userId = document.getElementById('user-id').value || 'user1';
+            const result = await apiCall('collection', `/collection/${userId}/games/${gameId}`, {
+                method: 'DELETE',
+                requireAuth: false
+            });
+
+            if (result.ok) {
+                showResponse('collection-response', 'Game removed from collection', 'success');
+                getUserCollection(); // Refresh display
+            } else {
+                showResponse('collection-response', `Error removing game: ${result.error}`, 'error');
+            }
+        }
+
+        // Health Check Functions
+        async function checkAllHealth() {
+            const healthContainer = document.getElementById('health-status');
+            healthContainer.innerHTML = '<h3>🔍 Checking Service Status...</h3>';
+
+            const services = [
+                { name: 'Authentication Service', key: 'auth', endpoint: '/auth/health' },
+                { name: 'Game Catalog Service', key: 'catalog', endpoint: '/games/health' },
+                { name: 'Price Comparison Service', key: 'prices', endpoint: '/prices/health' },
+                { name: 'Collection Management Service', key: 'collection', endpoint: '/collection/health' }
+            ];
+
+            let statusHTML = '<h3>🔧 Service Status</h3><div style="display: grid; gap: 10px;">';
+
+            for (const service of services) {
+                const result = await apiCall(service.key, service.endpoint, { 
+                    requireAuth: false, 
+                    showLoading: false 
+                });
+                
+                const status = result.ok ? 'online' : 'offline';
+                const statusIcon = result.ok ? '✅' : '❌';
+                
+                statusHTML += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: ${result.ok ? '#d4f8d4' : '#ffe0e0'}; border-radius: 8px;">
+                        <div>
+                            <strong>${service.name}</strong>
+                            <small style="display: block; color: #666;">${SERVICES[service.key]}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="status status-${status}">${statusIcon} ${status.toUpperCase()}</span>
+                            ${!result.ok ? `<br><small style="color: #721c24;">Error: ${result.error}</small>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            statusHTML += '</div>';
+            healthContainer.innerHTML = statusHTML;
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                if (document.activeElement.id === 'login-email' || document.activeElement.id === 'login-password') {
+                    login();
+                } else if (document.activeElement.id.startsWith('reg-')) {
+                    register();
+                }
+            }
+        });
+
+        // Auto-refresh health status every 30 seconds
+        setInterval(checkAllHealth, 30000);
+    </script>
+</body>
+</html>

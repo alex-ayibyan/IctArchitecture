@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collection-management
+  namespace: gameportal
+  labels:
+    app: collection-management
+    tier: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: collection-management
+  template:
+    metadata:
+      labels:
+        app: collection-management
+        tier: backend
+    spec:
+      containers:
+      - name: collection-management
+        image: collection-management-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3003
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /collection/health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /collection/health
+            port: 3003
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://gameportal:password123@mongo-svc:27017/gameportal"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collection-management-service
+  namespace: gameportal
+  labels:
+    app: collection-management
+spec:
+  selector:
+    app: collection-management
+  ports:
+  - port: 80
+    targetPort: 3003
+    name: http
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: collection-management-hpa
+  namespace: gameportal
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: collection-management
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

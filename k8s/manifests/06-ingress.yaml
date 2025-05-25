@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gameportal-ingress
+  namespace: gameportal
+  annotations:
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  rules:
+  - host: gameportal.local
+    http:
+      paths:
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: authentication-svc
+            port:
+              number: 80
+      - path: /games
+        pathType: Prefix
+        backend:
+          service:
+            name: game-catalog-svc
+            port:
+              number: 3000
+      - path: /prices
+        pathType: Prefix
+        backend:
+          service:
+            name: price-comparison-svc
+            port:
+              number: 80
+      - path: /collection
+        pathType: Prefix
+        backend:
+          service:
+            name: collection-management-service
+            port:
+              number: 80

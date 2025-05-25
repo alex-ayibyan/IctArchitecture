@@ -1,0 +1,43 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: authentication-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: authentication
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: game-catalog-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: game-catalog
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: price-comparison-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: price-comparison
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: collection-management-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: collection-management

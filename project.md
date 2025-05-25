@@ -229,7 +229,7 @@ Kan later opgesplitst worden in microservices zodra de modules stabieler zijn.
 Het systeem bevat relaties tussen gebruikers, games, platformen en ratings. We verwachten frequente query's met joins en filters.
 
 ##### Decision
-We gebruiken PostgreSQL als centrale relationele database voor zowel de monolithische als microservices-opstelling.
+We gebruiken MongoDB als centrale relationele database voor zowel de monolithische als microservices-opstelling.
 
 ##### Consequences
 - Sterke ondersteuning voor relaties en transacties  
