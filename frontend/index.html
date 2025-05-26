@@ -406,6 +406,21 @@
             
             <div id="games-container"></div>
             <div id="games-response" class="response-box"></div>
+            
+            <h3>Add New Game to Catalog</h3>
+            <div class="controls-row">
+                <input type="text" id="new-game-title" placeholder="Game Title">
+                <input type="text" id="new-game-description" placeholder="Description">
+                <input type="number" id="new-game-price" placeholder="Price (e.g., 29.99)" step="0.01">
+                <input type="date" id="new-game-release">
+                <input type="text" id="new-game-developer" placeholder="Developer">
+                <input type="text" id="new-game-publisher" placeholder="Publisher">
+            </div>
+            <div class="controls-row">
+                <input type="text" id="new-game-platforms" placeholder="Platforms (comma-separated: PC, PS5, Xbox)">
+                <input type="text" id="new-game-genres" placeholder="Genres (comma-separated: RPG, Action)">
+                <button class="btn btn-success" onclick="addGameToCatalog()">Add to Catalog</button>
+            </div>
         </div>
 
         <div class="section">
@@ -413,9 +428,6 @@
             <div class="controls-row">
                 <input type="text" id="price-game-id" placeholder="Game ID (e.g., 1)" value="1">
                 <button class="btn" onclick="getPrices()">Compare Prices</button>
-                <button class="btn btn-success" onclick="getBestPrice()">Find Best Deal</button>
-                <button class="btn" onclick="getSales()">Current Sales</button>
-                <button class="btn" onclick="getPriceHistory()">Price History</button>
             </div>
             
             <div id="price-results"></div>
@@ -425,7 +437,7 @@
         <div class="section">
             <h2>📚 My Game Collection</h2>
             <div class="controls-row">
-                <input type="text" id="user-id" placeholder="User ID" value="user1">
+                <input type="text" id="user-id" placeholder="User ID" value="alex">
                 <button class="btn" onclick="getUserCollection()">View Collection</button>
                 <button class="btn" onclick="getCollectionStats()">Show Stats</button>
             </div>
@@ -446,7 +458,7 @@
                     <option value="wishlist">Wishlist</option>
                     <option value="in-progress">Playing</option>
                     <option value="completed">Completed</option>
-                    <option value="dropped">Dropped</option>
+                    <option value="backlog">Backlog</option>
                 </select>
                 <button class="btn btn-success" onclick="addGameToCollection()">Add Game</button>
             </div>
@@ -470,8 +482,8 @@
             collection: 'http://gameportal.local'
         };
 
-        let authToken = localStorage.getItem('gamePortalToken');
-        let currentUser = JSON.parse(localStorage.getItem('gamePortalUser') || 'null');
+        let authToken = null;
+        let currentUser = null;
 
         window.onload = function() {
             updateAuthUI();
@@ -495,8 +507,6 @@
         function logout() {
             authToken = null;
             currentUser = null;
-            localStorage.removeItem('gamePortalToken');
-            localStorage.removeItem('gamePortalUser');
             updateAuthUI();
             showResponse('auth-response', 'Logged out successfully', 'success');
         }
@@ -550,7 +560,7 @@
 
         function showResponse(elementId, message, type = 'info') {
             const element = document.getElementById(elementId);
-            element.textContent = message;
+            element.textContent = typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
             element.className = `response-box ${type}`;
             element.scrollTop = element.scrollHeight;
         }
@@ -574,8 +584,6 @@
             if (result.ok && result.data.token) {
                 authToken = result.data.token;
                 currentUser = result.data.user;
-                localStorage.setItem('gamePortalToken', authToken);
-                localStorage.setItem('gamePortalUser', JSON.stringify(currentUser));
                 updateAuthUI();
                 showResponse('auth-response', `Registration successful! Welcome ${currentUser.username}!`, 'success');
                 
@@ -605,8 +613,6 @@
             if (result.ok && result.data.token) {
                 authToken = result.data.token;
                 currentUser = result.data.user;
-                localStorage.setItem('gamePortalToken', authToken);
-                localStorage.setItem('gamePortalUser', JSON.stringify(currentUser));
                 updateAuthUI();
                 showResponse('auth-response', `Login successful! Welcome back ${currentUser.username}!`, 'success');
                 
@@ -645,7 +651,80 @@
             }
         }
 
-        function displayGames(games) {
+        async function addGameToCatalog() {
+            const gameData = {
+                title: document.getElementById('new-game-title').value.trim(),
+                description: document.getElementById('new-game-description').value.trim(),
+                price: parseFloat(document.getElementById('new-game-price').value) || 0,
+                releaseDate: document.getElementById('new-game-release').value,
+                developer: document.getElementById('new-game-developer').value.trim(),
+                publisher: document.getElementById('new-game-publisher').value.trim(),
+                platforms: document.getElementById('new-game-platforms').value.split(',').map(p => p.trim()).filter(p => p),
+                genres: document.getElementById('new-game-genres').value.split(',').map(g => g.trim()).filter(g => g)
+            };
+
+            console.log('Sending game data:', gameData);
+
+            // Validation
+            if (!gameData.title) {
+                showResponse('games-response', 'Please enter a game title', 'error');
+                return;
+            }
+            if (!gameData.price || gameData.price <= 0 || isNaN(gameData.price)) {
+                showResponse('games-response', 'Please enter a valid price greater than 0', 'error');
+                return;
+            }
+            if (gameData.platforms.length === 0) {
+                showResponse('games-response', 'Please enter at least one platform', 'error');
+                return;
+            }
+
+            const result = await apiCall('catalog', '/games', {
+                method: 'POST',
+                body: JSON.stringify(gameData),
+                requireAuth: false
+            });
+
+            console.log('Add game result:', result);
+
+            if (result.ok) {
+                showResponse('games-response', `Game "${gameData.title}" added successfully!`, 'success');
+                ['new-game-title', 'new-game-description', 'new-game-price', 'new-game-release', 
+                'new-game-developer', 'new-game-publisher', 'new-game-platforms', 'new-game-genres']
+                .forEach(id => document.getElementById(id).value = '');
+                
+                loadGames();
+            } else {
+                console.error('Error details:', result);
+                const errorMessage = result.data?.error || result.error || 'Unknown error occurred';
+                showResponse('games-response', `Error adding game: ${errorMessage}`, 'error');
+            }
+        }
+
+        async function deleteGameFromCatalog(gameId, gameTitle) {
+            if (!confirm(`Are you sure you want to delete "${gameTitle}" from the catalog? This action cannot be undone.`)) {
+                return;
+            }
+
+            console.log('Deleting game with ID:', gameId);
+
+            const result = await apiCall('catalog', `/games/${gameId}`, {
+                method: 'DELETE',
+                requireAuth: false
+            });
+
+            console.log('Delete result:', result);
+
+            if (result.ok) {
+                showResponse('games-response', `Game "${gameTitle}" deleted successfully!`, 'success');
+                loadGames(); // Refresh the games list
+            } else {
+                const errorMessage = result.data?.error || result.error || 'Unknown error occurred';
+                showResponse('games-response', `Error deleting game: ${errorMessage}`, 'error');
+            }
+        }
+
+        async function displayGames(games) {
             const container = document.getElementById('games-container');
             
             if (!games || games.length === 0) {
@@ -664,6 +743,7 @@
                         <div style="margin-top: 15px;">
                             <button class="btn btn-small" onclick="getGamePrices('${game.id}')">Check Prices</button>
                             <button class="btn btn-small btn-success" onclick="quickAddToCollection('${game.id}', '${game.title}')">Add to Collection</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteGameFromCatalog('${game.id}', '${game.title}')">Delete</button>
                         </div>
                     </div>
                 `).join('') + '</div>';
@@ -678,78 +758,6 @@
                 showResponse('price-response', 'Price comparison loaded successfully', 'success');
             } else {
                 showResponse('price-response', `Error fetching prices: ${result.error}`, 'error');
-            }
-        }
-
-        async function getBestPrice() {
-            const gameId = document.getElementById('price-game-id').value || '1';
-            const result = await apiCall('prices', `/best-price/${gameId}`, { requireAuth: false });
-            
-            if (result.ok) {
-                const bestPrice = result.data.bestPrice;
-                document.getElementById('price-results').innerHTML = `
-                    <div style="background: #d4edda; padding: 20px; border-radius: 10px; text-align: center;">
-                        <h3>🏆 Best Deal Found!</h3>
-                        <p><strong>Store:</strong> ${bestPrice.store.toUpperCase()}</p>
-                        <p><strong>Price:</strong> <span style="font-size: 1.5em; color: #28a745;">$${bestPrice.price}</span></p>
-                        ${bestPrice.discount ? `<p style="color: #28a745;">💰 ON SALE! Was $${bestPrice.originalPrice}</p>` : ''}
-                    </div>
-                `;
-                showResponse('price-response', 'Best price found!', 'success');
-            } else {
-                showResponse('price-response', `Error finding best price: ${result.error}`, 'error');
-            }
-        }
-
-        async function getSales() {
-            const result = await apiCall('prices', '/sales', { requireAuth: false });
-            
-            if (result.ok && result.data.length > 0) {
-                document.getElementById('price-results').innerHTML = 
-                    '<h3>🔥 Current Sales</h3>' +
-                    result.data.map(sale => `
-                        <div style="background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #28a745;">
-                            <h4>${sale.name} - ${sale.store.toUpperCase()}</h4>
-                            <p><strong>Duration:</strong> ${sale.startDate} to ${sale.endDate}</p>
-                            <div style="margin-top: 10px;">
-                                ${sale.games.map(game => `
-                                    <div style="margin: 5px 0; padding: 8px; background: white; border-radius: 4px;">
-                                        <strong>${game.title}</strong> - ${game.discount} off 
-                                        <span style="color: #28a745; font-weight: bold;">${game.discountedPrice}</span>
-                                        <span style="text-decoration: line-through; color: #666;">${game.originalPrice}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `).join('');
-                showResponse('price-response', 'Current sales loaded successfully', 'success');
-            } else {
-                showResponse('price-response', 'No active sales found', 'info');
-            }
-        }
-
-        async function getPriceHistory() {
-            const gameId = document.getElementById('price-game-id').value || '1';
-            const result = await apiCall('prices', `/price-history/${gameId}`, { requireAuth: false });
-            
-            if (result.ok) {
-                document.getElementById('price-results').innerHTML = `
-                    <h3>📈 Price History for Game ${gameId}</h3>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                        <p><strong>Store:</strong> ${result.data.store.toUpperCase()}</p>
-                        <div style="margin-top: 10px;">
-                            ${result.data.history.map(entry => `
-                                <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #dee2e6;">
-                                    <span>${entry.date}</span>
-                                    <span style="font-weight: bold; color: #667eea;">${entry.price}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-                showResponse('price-response', 'Price history loaded successfully', 'success');
-            } else {
-                showResponse('price-response', `Error loading price history: ${result.error}`, 'error');
             }
         }
 
@@ -772,29 +780,22 @@
                     ${priceData.prices.map(price => `
                         <div class="price-card">
                             <h4>${price.store}</h4>
-                            <div class="price">${price.price}</div>
+                            <div class="price">$${price.price}</div>
                             ${price.discount ? `
                                 <div class="discount">
                                     🔥 ON SALE!<br>
-                                    Was ${price.originalPrice}
+                                    Was $${price.originalPrice}
                                 </div>
                             ` : ''}
                             <p style="font-size: 0.8em; margin-top: 8px;">Currency: ${price.currency}</p>
                         </div>
                     `).join('')}
                 </div>
-                ${priceData.errors && priceData.errors.length > 0 ? `
-                    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
-                        <strong>Some stores couldn't be reached:</strong><br>
-                        ${priceData.errors.map(err => `${err.store}: ${err.error}`).join('<br>')}
-                    </div>
-                ` : ''}
             `;
         }
 
-        // Collection Management Functions
         async function getUserCollection() {
-            const userId = document.getElementById('user-id').value || 'user1';
+            const userId = document.getElementById('user-id').value || 'alex';
             const result = await apiCall('collection', `/collection/${userId}`, { requireAuth: false });
             
             if (result.ok) {
@@ -806,7 +807,7 @@
         }
 
         async function getCollectionStats() {
-            const userId = document.getElementById('user-id').value || 'user1';
+            const userId = document.getElementById('user-id').value || 'alex';
             const result = await apiCall('collection', `/collection/${userId}/stats`, { requireAuth: false });
             
             if (result.ok) {
@@ -818,9 +819,9 @@
         }
 
         async function addGameToCollection() {
-            const userId = document.getElementById('user-id').value || 'user1';
+            const userId = document.getElementById('user-id').value || 'alex';
             const gameData = {
-                id: document.getElementById('add-game-id').value,
+                gameId: document.getElementById('add-game-id').value,
                 title: document.getElementById('add-game-title').value,
                 platform: document.getElementById('add-game-platform').value,
                 status: document.getElementById('add-game-status').value,
@@ -828,10 +829,13 @@
                 playtime: 0
             };
 
-            if (!gameData.id || !gameData.title) {
+            if (!gameData.gameId || !gameData.title) {
                 showResponse('collection-response', 'Please fill game ID and title', 'error');
                 return;
             }
+
+            console.log('Sending data:', gameData);
+            console.log('To URL:', `/collection/${userId}/games`);
 
             const result = await apiCall('collection', `/collection/${userId}/games`, {
                 method: 'POST',
@@ -841,12 +845,11 @@
 
             if (result.ok) {
                 showResponse('collection-response', 'Game added to collection successfully!', 'success');
-                // Clear form
                 document.getElementById('add-game-id').value = '';
                 document.getElementById('add-game-title').value = '';
-                // Refresh collection display
                 getUserCollection();
             } else {
+                console.error('Add game error:', result);
                 showResponse('collection-response', `Error adding game: ${result.data?.error || result.error}`, 'error');
             }
         }
@@ -943,16 +946,17 @@
                 'wishlist': '#6c757d',
                 'in-progress': '#007bff',
                 'completed': '#28a745',
+                'backlog': '#ffc107',
                 'dropped': '#dc3545'
             };
             return colors[status] || '#6c757d';
         }
 
         async function updateGameStatus(gameId) {
-            const newStatus = prompt('Enter new status (wishlist, in-progress, completed, dropped):');
+            const newStatus = prompt('Enter new status (wishlist, in-progress, completed, backlog):');
             if (!newStatus) return;
 
-            const userId = document.getElementById('user-id').value || 'user1';
+            const userId = document.getElementById('user-id').value || 'alex';
             const result = await apiCall('collection', `/collection/${userId}/games/${gameId}`, {
                 method: 'PATCH',
                 body: JSON.stringify({ status: newStatus }),
@@ -961,7 +965,7 @@
 
             if (result.ok) {
                 showResponse('collection-response', 'Game status updated successfully!', 'success');
-                getUserCollection(); // Refresh display
+                getUserCollection();
             } else {
                 showResponse('collection-response', `Error updating status: ${result.error}`, 'error');
             }
@@ -972,7 +976,7 @@
                 return;
             }
 
-            const userId = document.getElementById('user-id').value || 'user1';
+            const userId = document.getElementById('user-id').value || 'alex';
             const result = await apiCall('collection', `/collection/${userId}/games/${gameId}`, {
                 method: 'DELETE',
                 requireAuth: false
@@ -980,13 +984,12 @@
 
             if (result.ok) {
                 showResponse('collection-response', 'Game removed from collection', 'success');
-                getUserCollection(); // Refresh display
+                getUserCollection();
             } else {
                 showResponse('collection-response', `Error removing game: ${result.error}`, 'error');
             }
         }
 
-        // Health Check Functions
         async function checkAllHealth() {
             const healthContainer = document.getElementById('health-status');
             healthContainer.innerHTML = '<h3>🔍 Checking Service Status...</h3>';
@@ -1027,7 +1030,6 @@
             healthContainer.innerHTML = statusHTML;
         }
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {
                 if (document.activeElement.id === 'login-email' || document.activeElement.id === 'login-password') {
@@ -1038,7 +1040,6 @@
             }
         });
 
-        // Auto-refresh health status every 30 seconds
         setInterval(checkAllHealth, 30000);
     </script>
 </body>

@@ -20,16 +20,52 @@ const gameSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: true
+    required: [true, 'Title is required'],
+    trim: true,
+    minlength: [1, 'Title cannot be empty']
   },
-  description: String,
-  price: Number,
-  releaseDate: Date,
-  platforms: [String],
-  genres: [String],
-  developer: String,
-  publisher: String,
-  imageUrl: String
+  description: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  price: {
+    type: Number,
+    required: [true, 'Price is required'],
+    min: [0.01, 'Price must be greater than 0']
+  },
+  releaseDate: {
+    type: String,
+    default: ''
+  },
+  platforms: {
+    type: [String],
+    required: [true, 'At least one platform is required'],
+    validate: {
+      validator: function(v) {
+        return v && v.length > 0 && v.every(platform => platform.trim().length > 0);
+      },
+      message: 'At least one valid platform is required'
+    }
+  },
+  genres: {
+    type: [String],
+    default: []
+  },
+  developer: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  publisher: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  imageUrl: {
+    type: String,
+    default: ''
+  }
 }, {
   timestamps: true,
   _id: false
@@ -47,7 +83,7 @@ async function initializeSampleData() {
           title: "The Witcher 3: Wild Hunt",
           description: "Award-winning open world RPG",
           price: 39.99,
-          releaseDate: new Date("2015-05-19"),
+          releaseDate: "2015-05-19",
           platforms: ["PC", "PS4", "PS5", "Xbox One", "Xbox Series X", "Switch"],
           genres: ["RPG", "Action", "Adventure"],
           developer: "CD Projekt Red",
@@ -58,7 +94,7 @@ async function initializeSampleData() {
           title: "Cyberpunk 2077",
           description: "Open-world action-adventure set in Night City",
           price: 59.99,
-          releaseDate: new Date("2020-12-10"),
+          releaseDate: "2020-12-10",
           platforms: ["PC", "PS4", "PS5", "Xbox One", "Xbox Series X"],
           genres: ["RPG", "Action", "Adventure"],
           developer: "CD Projekt Red",
@@ -69,7 +105,7 @@ async function initializeSampleData() {
           title: "Minecraft",
           description: "Sandbox game with infinite possibilities",
           price: 26.95,
-          releaseDate: new Date("2011-11-18"),
+          releaseDate: "2011-11-18",
           platforms: ["PC", "PS4", "Xbox One", "Switch", "Mobile"],
           genres: ["Sandbox", "Survival"],
           developer: "Mojang Studios",
@@ -80,7 +116,7 @@ async function initializeSampleData() {
           title: "Grand Theft Auto V",
           description: "Open world action-adventure game",
           price: 29.99,
-          releaseDate: new Date("2013-09-17"),
+          releaseDate: "2013-09-17",
           platforms: ["PC", "PS4", "PS5", "Xbox One", "Xbox Series X"],
           genres: ["Action", "Adventure"],
           developer: "Rockstar North",
@@ -91,7 +127,7 @@ async function initializeSampleData() {
           title: "Among Us",
           description: "Multiplayer social deduction game",
           price: 5.00,
-          releaseDate: new Date("2018-06-15"),
+          releaseDate: "2018-06-15",
           platforms: ["PC", "Mobile", "Switch"],
           genres: ["Party", "Multiplayer"],
           developer: "InnerSloth",
@@ -227,15 +263,64 @@ app.get('/games/:id', async (req, res) => {
 
 app.post('/games', async (req, res) => {
   try {
-    if (!req.body._id && !req.body.id) {
-      const count = await Game.countDocuments();
-      req.body._id = (count + 1).toString();
-    } else if (req.body.id && !req.body._id) {
-      req.body._id = req.body.id;
+    console.log('Received game data:', req.body);
+    
+    // Validation
+    if (!req.body.title || req.body.title.trim() === '') {
+      return res.status(400).json({ error: 'Title is required and cannot be empty' });
     }
     
-    const game = new Game(req.body);
+    const price = parseFloat(req.body.price);
+    if (!price || price <= 0 || isNaN(price)) {
+      return res.status(400).json({ error: 'Valid price greater than 0 is required' });
+    }
+    
+    if (!req.body.platforms || !Array.isArray(req.body.platforms) || req.body.platforms.length === 0) {
+      return res.status(400).json({ error: 'At least one platform is required' });
+    }
+    
+    // Generate unique ID
+    const count = await Game.countDocuments();
+    let uniqueId = (count + 1).toString();
+    
+    // Check if ID already exists (in case of race conditions)
+    let counter = 1;
+    while (await Game.findById(uniqueId)) {
+      uniqueId = `${count + 1}_${counter}`;
+      counter++;
+    }
+    
+    // Clean up arrays if they come as strings
+    let platforms = req.body.platforms;
+    let genres = req.body.genres || [];
+    
+    if (typeof platforms === 'string') {
+      platforms = platforms.split(',').map(p => p.trim()).filter(p => p);
+    }
+    if (typeof genres === 'string') {
+      genres = genres.split(',').map(g => g.trim()).filter(g => g);
+    }
+    
+    // Create game object
+    const gameData = {
+      _id: uniqueId,
+      title: req.body.title.trim(),
+      description: req.body.description ? req.body.description.trim() : '',
+      price: price,
+      releaseDate: req.body.releaseDate || '',
+      platforms: platforms,
+      genres: genres,
+      developer: req.body.developer ? req.body.developer.trim() : '',
+      publisher: req.body.publisher ? req.body.publisher.trim() : '',
+      imageUrl: req.body.imageUrl || ''
+    };
+    
+    console.log('Creating game with data:', gameData);
+    
+    const game = new Game(gameData);
     await game.save();
+    
+    console.log('Game saved successfully:', game._id);
     
     res.status(201).json({
       message: 'Game added successfully',
@@ -254,7 +339,117 @@ app.post('/games', async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding game:', error);
-    res.status(500).json({ error: 'Failed to add game' });
+    console.error('Error stack:', error.stack);
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        error: `Validation failed: ${validationErrors.join(', ')}`,
+        details: error.errors
+      });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'Game with this ID already exists' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to add game', 
+      details: error.message,
+      type: error.name 
+    });
+  }
+});
+
+app.put('/games/:id', async (req, res) => {
+  try {
+    const gameId = req.params.id;
+    
+    if (typeof req.body.platforms === 'string') {
+      req.body.platforms = req.body.platforms.split(',').map(p => p.trim()).filter(p => p);
+    }
+    if (typeof req.body.genres === 'string') {
+      req.body.genres = req.body.genres.split(',').map(g => g.trim()).filter(g => g);
+    }
+    
+    const updatedGame = await Game.findByIdAndUpdate(
+      gameId,
+      {
+        $set: {
+          title: req.body.title,
+          description: req.body.description,
+          price: parseFloat(req.body.price),
+          releaseDate: req.body.releaseDate,
+          platforms: req.body.platforms,
+          genres: req.body.genres,
+          developer: req.body.developer,
+          publisher: req.body.publisher,
+          imageUrl: req.body.imageUrl
+        }
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedGame) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    
+    res.json({
+      message: 'Game updated successfully',
+      game: {
+        id: updatedGame._id,
+        title: updatedGame.title,
+        description: updatedGame.description,
+        price: updatedGame.price,
+        releaseDate: updatedGame.releaseDate,
+        platforms: updatedGame.platforms,
+        genres: updatedGame.genres,
+        developer: updatedGame.developer,
+        publisher: updatedGame.publisher,
+        imageUrl: updatedGame.imageUrl
+      }
+    });
+  } catch (error) {
+    console.error('Error updating game:', error);
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ error: `Validation failed: ${validationErrors.join(', ')}` });
+    }
+    res.status(500).json({ error: 'Failed to update game' });
+  }
+});
+
+app.delete('/games/:id', async (req, res) => {
+  console.log('DELETE request received for games/:id');
+  console.log('Request params:', req.params);
+  console.log('Full URL:', req.originalUrl);
+  
+  try {
+    const gameId = req.params.id;
+    console.log('Attempting to delete game with ID:', gameId);
+    
+    // First check if the game exists
+    const existingGame = await Game.findById(gameId);
+    console.log('Found existing game:', existingGame ? existingGame.title : 'Not found');
+    
+    if (!existingGame) {
+      console.log('Game not found for deletion:', gameId);
+      return res.status(404).json({ error: 'Game not found', gameId: gameId });
+    }
+    
+    const deletedGame = await Game.findByIdAndDelete(gameId);
+    console.log('Successfully deleted game:', deletedGame.title);
+    
+    res.json({ 
+      message: 'Game deleted successfully',
+      deletedGame: {
+        id: deletedGame._id,
+        title: deletedGame.title
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting game:', error);
+    res.status(500).json({ error: 'Failed to delete game', details: error.message });
   }
 });
 
