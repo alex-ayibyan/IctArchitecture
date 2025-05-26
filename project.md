@@ -1,6 +1,6 @@
 # Project ICT Architecture: Meta-winkel voor Games
 
-## 1. Inleiding
+# 1. Inleiding
 
 Samen met twee vrienden sta ik op het punt om af te studeren in een ICT-richting. In plaats van meteen te gaan solliciteren, willen we een eigen project opstarten dat aansluit bij onze gedeelde passie: gamen. Na een uitgebreide brainstorm kwamen we tot het idee om een “meta-winkel” te bouwen die games centraliseert vanuit verschillende online winkels. Het systeem moet gebruikers toelaten om prijzen te vergelijken, hun collectie bij te houden, nieuwe titels te ontdekken en meldingen te ontvangen bij aanbiedingen.
 
@@ -12,7 +12,7 @@ Doel is om tot een schaalbare, onderhoudbare en veilige oplossing te bekomen die
 
 ---
 
-## 2. Karakteristieken en Driving Characteristics
+# 2. Karakteristieken en Driving Characteristics
 
 ### Belangrijke Karakteristieken
 
@@ -52,7 +52,7 @@ Omdat gebruikers data van externe platformen koppelen, ratings geven en persoonl
 
 ---
 
-## 3. Logische Componenten
+# 3. Logische Componenten
 
 Voor dit systeem gebruiken we een combinatie van **actor/action approach** en **workflow approach**, omdat er zowel veel interactie is tussen gebruikers en het systeem als achterliggende processen die zelfstandig lopen (zoals prijsupdating, aanbevelingen genereren, etc.).
 
@@ -118,7 +118,7 @@ sequenceDiagram
     Notificatie Service-->>Gebruiker: "Game X is nu €29,99!"
 ```
 
-## 4. Monolithische Architectuur
+# 4. Monolithische Architectuur
 
 ### Monolithische Stijl: Keuze en Verantwoording
 Een monolithische architectuur heeft de voorkeur voor de eerste versie van het systeem vanwege de eenvoud in de ontwikkeling, het onderhoud en de integratie van verschillende onderdelen. De monolithische aanpak maakt het mogelijk om snel een prototype te bouwen zonder de overhead van meerdere microservices, en biedt voordelen op het gebied van eenvoudiger testen, deployment en communicatie tussen de modules.
@@ -164,7 +164,7 @@ graph LR
 ```
 
 
-## 5. Microservices Architectuur
+# 5. Microservices Architectuur
 
 ### Opsplitsing in services
 Een microservice-architectuur biedt de mogelijkheid om het systeem op te splitsen in meerdere onafhankelijke services. Dit kan schaalbaarheid, onderhoudbaarheid en flexibiliteit ten goede komen. De belangrijkste services die we overwegen in de microservice-aanpak zijn:
@@ -312,17 +312,420 @@ CI-pipeline pusht automatisch naar het cluster, policies worden via RBAC en PodS
 Beheerd via cloud (GKE of AKS), met fallback naar lokaal (minikube) voor testing.
 
 
+# 6. Kubernetes Proof-of-Concept
 
-## 6. Kubernetes Proof-of-Concept
+## Implementatie Overzicht
 
-- Microservices dummy setup
-- Authenticatie
-- Monitoring
-- Resilience
+De microservices implementatie draait volledig op **Kubernetes** en demonstreert alle vereiste aspecten van de opdracht. Het systeem bestaat uit **vier hoofdservices** die elk een specifiek domein beheren.
+
+## Service Architectuur
+
+### Authentication Service
+
+```javascript
+// JWT-based authentication met bcrypt password hashing
+const token = jwt.sign(
+  { userId: user._id, email: user.email, username: user.username },
+  process.env.JWT_SECRET || 'your-secret-key',
+  { expiresIn: '24h' }
+);
+```
+
+**Features:**
+
+* User registratie en login
+* JWT token generatie en validatie
+* Password hashing met bcrypt
+* Health checks op `/auth/health`
+* Database connectiviteit monitoring
+
+### Game Catalog Service
+
+```javascript
+// Dynamische game catalog met CRUD operaties
+const gameSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  title: { type: String, required: [true, 'Title is required'] },
+  price: { type: Number, required: [true, 'Price is required'], min: [0.01, 'Price must be greater than 0'] },
+  platforms: { type: [String], required: [true, 'At least one platform is required'] }
+});
+```
+
+**Features:**
+
+* CRUD operaties voor games
+* Zoeken en filteren (genre, platform, zoekterm)
+* Paginatie ondersteuning
+* Input validatie en error handling
+* Sample data initialisatie
+
+### Price Comparison Service
+
+```javascript
+// Prijsvergelijking met store integratie
+const PriceSchema = new mongoose.Schema({
+  gameId: { type: String, required: true },
+  store: { type: String, required: true },
+  price: { type: Number, required: true },
+  discount: { type: Boolean, default: false },
+  originalPrice: Number,
+  lastUpdated: { type: Date, default: Date.now }
+});
+```
+
+**Features:**
+
+* Multi-store prijsvergelijking
+* Kortingen en originele prijzen tracking
+* Best price algoritme
+* Mock price history voor demonstratie
+* Store-specifieke filtering
+
+### Collection Management Service
+
+```javascript
+// Persoonlijke game collecties
+const CollectionItemSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  gameId: { type: String, required: true },
+  status: { type: String, enum: ['wishlist', 'in-progress', 'completed', 'backlog'] },
+  playtime: { type: Number, default: 0 },
+  rating: { type: Number, min: 1, max: 5 }
+});
+```
+
+**Features:**
+
+* Persoonlijke game collecties per gebruiker
+* Status tracking (wishlist, playing, completed, backlog)
+* Playtime en rating systeem
+* Collectie statistieken en analytics
+* Bulk operaties voor collectie management
+
+## Authenticatie Implementatie
+
+### Kubernetes Secrets
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-secrets
+  namespace: gameportal
+type: Opaque
+data:
+  JWT_SECRET: eW91ci1zZWNyZXQta2V5  # Base64 encoded
+```
+
+### JWT Token Flow
+
+* **Registratie/Login**: User credentials worden gevalideerd tegen MongoDB
+* **Token Generatie**: JWT token met 24h expiry wordt aangemaakt
+* **Token Distributie**: Client ontvangt token voor verdere authenticatie
+* **Token Validatie**: Elke protected endpoint valideert de JWT token
+
+### Database Security
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongodb-secrets
+  namespace: gameportal
+data:
+  MONGO_INITDB_ROOT_USERNAME: Z2FtZXBvcnRhbA==  # gameportal
+  MONGO_INITDB_ROOT_PASSWORD: cGFzc3dvcmQxMjM=   # password123
+```
+
+## Monitoring Implementatie
+
+### Prometheus Configuration
+
+```yaml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'gameportal-services'
+    static_configs:
+      - targets:
+        - 'authentication-svc.gameportal.svc.cluster.local:80'
+        - 'game-catalog-svc.gameportal.svc.cluster.local:3000'
+        - 'price-comparison-svc.gameportal.svc.cluster.local:80'
+        - 'collection-management-service.gameportal.svc.cluster.local:80'
+    metrics_path: '/health'
+    scrape_interval: 30s
+```
+
+### Health Check Endpoints
+
+```javascript
+app.get('/auth/health', async (req, res) => {
+  try {
+    const dbState = mongoose.connection.readyState;
+    if (dbState === 1) {
+      await User.findOne().limit(1);
+      res.json({
+        status: 'healthy',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      throw new Error('Database not connected');
+    }
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      database: 'disconnected',
+      error: error.message
+    });
+  }
+});
+```
+
+### Grafana Dashboard
+
+* Service Status
+* Response Times
+* Error Rates
+* Database Connections
+* Resource Usage
+
+## Resilience Implementatie
+
+### Horizontal Pod Autoscaling
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: authentication-hpa
+  namespace: gameportal
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: authentication
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+### Pod Disruption Budgets
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: authentication-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: authentication
+```
+
+### Liveness en Readiness Probes
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /auth/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /auth/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+```
+
+### Rolling Update Strategy
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+```
+
+### Resource Limits en Requests
+
+```yaml
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+```
+
+## Service Communication
+
+### Ingress Configuration
+
+```yaml
+spec:
+  rules:
+  - host: gameportal.local
+    http:
+      paths:
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: authentication-svc
+            port:
+              number: 80
+      - path: /games
+        pathType: Prefix
+        backend:
+          service:
+            name: game-catalog-svc
+            port:
+              number: 3000
+```
+
+### Service Discovery
+
+* `authentication-svc.gameportal.svc.cluster.local`
+* `game-catalog-svc.gameportal.svc.cluster.local`
+* `mongo-svc.gameportal.svc.cluster.local`
+
+## Database Strategy
+
+Alle services delen één MongoDB instance maar gebruiken verschillende collecties:
+
+* **Authentication**: users collectie
+* **Game Catalog**: games collectie
+* **Price Comparison**: prices collectie
+* **Collection Management**: collectionitems collectie
+
+## Frontend Integration
+
+```javascript
+async function apiCall(service, endpoint, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken && options.requireAuth !== false) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
+  const url = `${SERVICES[service]}${endpoint}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...headers, ...options.headers }
+  });
+  // Error handling en response parsing...
+}
+```
+
+## Deployment en Operations
+
+### Namespace Isolation
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gameportal
+  labels:
+    name: gameportal
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+```
+
+### Storage Management
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: gameportal
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
 
 ## 7. Toelichting
 
-- Reflectie
-- Gebruikte tools
-- Lessons learned
+### Reflectie op Architecturale Keuzes
 
+#### Monolithische vs Microservices Trade-offs
+
+**Voordelen Monolithisch:**
+
+* Snelle prototyping
+* Eenvoudige debugging
+* Minder netwerklatency
+* Transactionele consistentie
+
+**Voordelen Microservices:**
+
+* Onafhankelijke scaling
+* Technology diversity
+* Team autonomie
+* Fault isolation
+
+### Lessons Learned
+
+1. **Kubernetes Leercurve**
+2. **Monitoring is Cruciaal**
+3. **Database Design Impact**
+4. **Resilience Patterns zijn Complex**
+
+### Gebruikte Tools en Technologieën
+
+**Development Stack:** Node.js, Express, MongoDB, JWT, bcrypt
+**Kubernetes Ecosystem:** Kubernetes, Docker, Nginx Ingress, Prometheus, Grafana
+**Development Tools:** kubectl, Postman, Visual Studio Code, minikube
+
+### Uitdagingen en Oplossingen
+
+* **Service Discovery**: Kubernetes DNS-based service names
+* **Configuration Management**: Secrets en ConfigMaps
+* **Database Migrations**: Mongoose schema + init scripts
+* **Inter-Service Communication**: HTTP + retry logic
+
+### Wat Anders Zou Worden Gedaan
+
+1. **Database per Service**: PostgreSQL, MongoDB, TimescaleDB
+2. **Event-Driven Architecture**: RabbitMQ/Kafka, CQRS
+3. **Advanced Resilience Patterns**: Circuit Breaker, Bulkhead, Retry
+4. **Security Hardening**: OAuth2, API Gateway, Network Policies
+5. **Observability Verbetering**: Tracing, Structured logging, Custom metrics
+
+### Toekomstige Ontwikkelingen
+
+* Externe API Integraties (Steam, PlayStation Store)
+* Machine Learning aanbevelingen
+* Mobile apps (iOS/Android)
+
+## Conclusie
+
+Dit project toont de complexiteit en voordelen van microservice architecturen. De keuze voor Kubernetes biedt schaalbaarheid en controle, maar vereist expertise. Een monoliet is geschikt voor een vroege fase; microservices passen beter bij groei en teamverdeling.

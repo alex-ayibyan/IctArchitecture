@@ -665,7 +665,6 @@
 
             console.log('Sending game data:', gameData);
 
-            // Validation
             if (!gameData.title) {
                 showResponse('games-response', 'Please enter a game title', 'error');
                 return;
@@ -717,7 +716,7 @@
 
             if (result.ok) {
                 showResponse('games-response', `Game "${gameTitle}" deleted successfully!`, 'success');
-                loadGames(); // Refresh the games list
+                loadGames();
             } else {
                 const errorMessage = result.data?.error || result.error || 'Unknown error occurred';
                 showResponse('games-response', `Error deleting game: ${errorMessage}`, 'error');

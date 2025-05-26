@@ -265,7 +265,6 @@ app.post('/games', async (req, res) => {
   try {
     console.log('Received game data:', req.body);
     
-    // Validation
     if (!req.body.title || req.body.title.trim() === '') {
       return res.status(400).json({ error: 'Title is required and cannot be empty' });
     }
@@ -279,18 +278,15 @@ app.post('/games', async (req, res) => {
       return res.status(400).json({ error: 'At least one platform is required' });
     }
     
-    // Generate unique ID
     const count = await Game.countDocuments();
     let uniqueId = (count + 1).toString();
     
-    // Check if ID already exists (in case of race conditions)
     let counter = 1;
     while (await Game.findById(uniqueId)) {
       uniqueId = `${count + 1}_${counter}`;
       counter++;
     }
     
-    // Clean up arrays if they come as strings
     let platforms = req.body.platforms;
     let genres = req.body.genres || [];
     
@@ -301,7 +297,6 @@ app.post('/games', async (req, res) => {
       genres = genres.split(',').map(g => g.trim()).filter(g => g);
     }
     
-    // Create game object
     const gameData = {
       _id: uniqueId,
       title: req.body.title.trim(),
@@ -428,7 +423,6 @@ app.delete('/games/:id', async (req, res) => {
     const gameId = req.params.id;
     console.log('Attempting to delete game with ID:', gameId);
     
-    // First check if the game exists
     const existingGame = await Game.findById(gameId);
     console.log('Found existing game:', existingGame ? existingGame.title : 'Not found');
     
