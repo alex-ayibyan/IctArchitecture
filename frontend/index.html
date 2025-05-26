@@ -352,7 +352,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎮 Game Portal</h1>
+            <h1>Game Portal</h1>
             <p>Your comprehensive gaming companion</p>
         </div>
 
@@ -362,7 +362,7 @@
         </div>
 
         <div class="section" id="auth-section">
-            <h2>🔐 Authentication</h2>
+            <h2>Authentication</h2>
             <div class="auth-container">
                 <div class="auth-form">
                     <h3>Register</h3>
@@ -397,7 +397,7 @@
         </div>
 
         <div class="section">
-            <h2>🎮 Game Catalog</h2>
+            <h2>Game Catalog</h2>
             <div class="controls-row">
                 <button class="btn" onclick="loadGames()">Load All Games</button>
                 <button class="btn" onclick="getGameById()">Search by ID</button>
@@ -424,7 +424,7 @@
         </div>
 
         <div class="section">
-            <h2>💰 Price Comparison</h2>
+            <h2>Price Comparison</h2>
             <div class="controls-row">
                 <input type="text" id="price-game-id" placeholder="Game ID (e.g., 1)" value="1">
                 <button class="btn" onclick="getPrices()">Compare Prices</button>
@@ -435,7 +435,7 @@
         </div>
 
         <div class="section">
-            <h2>📚 My Game Collection</h2>
+            <h2>My Game Collection</h2>
             <div class="controls-row">
                 <input type="text" id="user-id" placeholder="User ID" value="alex">
                 <button class="btn" onclick="getUserCollection()">View Collection</button>
@@ -468,7 +468,35 @@
         </div>
 
         <div class="section">
-            <h2>💊 System Health</h2>
+            <h2>Notifications & Price Alerts</h2>
+            
+            <div class="controls-row">
+                <input type="text" id="user-id-notif" placeholder="User ID" value="user1">
+                <button class="btn" onclick="getNotifications()">Load Notifications</button>
+                <button class="btn" onclick="getPriceAlerts()">Load Price Alerts</button>
+            </div>
+            
+            <h3>Create Price Alert</h3>
+            <div class="controls-row">
+                <input type="text" id="alert-game-id" placeholder="Game ID (e.g., 1)">
+                <input type="text" id="alert-game-title" placeholder="Game Title">
+                <input type="number" id="alert-target-price" placeholder="Target Price" step="0.01">
+                <button class="btn btn-success" onclick="createPriceAlert()">Create Alert</button>
+            </div>
+            
+            <h3>Test Price Alert Trigger</h3>
+            <div class="controls-row">
+                <input type="text" id="trigger-game-id" placeholder="Game ID" value="1">
+                <input type="number" id="trigger-price" placeholder="Current Price" step="0.01" value="20.00">
+                <button class="btn" onclick="triggerPriceCheck()">Trigger Price Check</button>
+            </div>
+            
+            <div id="notification-results"></div>
+            <div id="notification-response" class="response-box"></div>
+        </div>
+
+        <div class="section">
+            <h2>System Health</h2>
             <button class="btn" onclick="checkAllHealth()">Check All Services</button>
             <div id="health-status" style="margin-top: 20px;"></div>
         </div>
@@ -479,7 +507,8 @@
             auth: 'http://gameportal.local',
             catalog: 'http://gameportal.local', 
             prices: 'http://gameportal.local',
-            collection: 'http://gameportal.local'
+            collection: 'http://gameportal.local',
+            notifications: 'http://gameportal.local'
         };
 
         let authToken = null;
@@ -989,9 +1018,204 @@
             }
         }
 
+        async function getNotifications() {
+            const userId = document.getElementById('user-id-notif').value || 'user1';
+            const result = await apiCall('notifications', `/notifications/${userId}`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayNotifications(result.data);
+                showResponse('notification-response', `Loaded ${result.data.notifications.length} notifications`, 'success');
+            } else {
+                showResponse('notification-response', `Error loading notifications: ${result.error}`, 'error');
+            }
+        }
+
+        async function getPriceAlerts() {
+            const userId = document.getElementById('user-id-notif').value || 'user1';
+            const result = await apiCall('notifications', `/notifications/${userId}/price-alerts`, { requireAuth: false });
+            
+            if (result.ok) {
+                displayPriceAlerts(result.data);
+                showResponse('notification-response', `Loaded ${result.data.alerts.length} price alerts`, 'success');
+            } else {
+                showResponse('notification-response', `Error loading price alerts: ${result.error}`, 'error');
+            }
+        }
+
+        async function createPriceAlert() {
+            const userId = document.getElementById('user-id-notif').value || 'user1';
+            const gameId = document.getElementById('alert-game-id').value;
+            const gameTitle = document.getElementById('alert-game-title').value;
+            const targetPrice = document.getElementById('alert-target-price').value;
+            
+            if (!gameId || !gameTitle || !targetPrice) {
+                showResponse('notification-response', 'Please fill all price alert fields', 'error');
+                return;
+            }
+            
+            const result = await apiCall('notifications', `/notifications/${userId}/price-alerts`, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    gameId, 
+                    gameTitle, 
+                    targetPrice: parseFloat(targetPrice) 
+                }),
+                requireAuth: false
+            });
+            
+            if (result.ok) {
+                showResponse('notification-response', 'Price alert created successfully!', 'success');
+                document.getElementById('alert-game-id').value = '';
+                document.getElementById('alert-game-title').value = '';
+                document.getElementById('alert-target-price').value = '';
+                getPriceAlerts();
+            } else {
+                showResponse('notification-response', `Error creating price alert: ${result.data?.error || result.error}`, 'error');
+            }
+        }
+
+        async function triggerPriceCheck() {
+            const gameId = document.getElementById('trigger-game-id').value;
+            const currentPrice = document.getElementById('trigger-price').value;
+            
+            if (!gameId || !currentPrice) {
+                showResponse('notification-response', 'Please fill game ID and current price', 'error');
+                return;
+            }
+            
+            const result = await apiCall('notifications', '/notifications/check-price-alerts', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    gameId, 
+                    currentPrice: parseFloat(currentPrice) 
+                }),
+                requireAuth: false
+            });
+            
+            if (result.ok) {
+                showResponse('notification-response', `Price check triggered: ${result.data.message}`, 'success');
+                setTimeout(() => getNotifications(), 1000);
+            } else {
+                showResponse('notification-response', `Error triggering price check: ${result.error}`, 'error');
+            }
+        }
+
+        async function markAsRead(userId, notificationId) {
+            const result = await apiCall('notifications', `/notifications/${userId}/${notificationId}/read`, {
+                method: 'PATCH',
+                requireAuth: false
+            });
+            
+            if (result.ok) {
+                showResponse('notification-response', 'Marked as read', 'success');
+                getNotifications();
+            } else {
+                showResponse('notification-response', 'Error marking as read', 'error');
+            }
+        }
+
+        function displayNotifications(data) {
+            const container = document.getElementById('notification-results');
+            
+            if (!data.notifications || data.notifications.length === 0) {
+                container.innerHTML = '<p>No notifications found</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <h3>Notifications for ${data.userId} (${data.notifications.length})</h3>
+                <div class="notifications-list">
+                    ${data.notifications.map(notif => `
+                        <div class="notification-card" style="
+                            background: ${notif.isRead ? '#f8f9fa' : '#e3f2fd'};
+                            padding: 15px;
+                            margin: 10px 0;
+                            border-radius: 8px;
+                            border-left: 4px solid ${getNotificationColor(notif.type)};
+                            ${notif.isRead ? 'opacity: 0.7;' : ''}
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex-grow: 1;">
+                                    <h4>${notif.title} ${notif.isRead ? '' : '🔴'}</h4>
+                                    <p>${notif.message}</p>
+                                    <small style="color: #666;">
+                                        Type: ${notif.type} | 
+                                        ${new Date(notif.createdAt).toLocaleString()}
+                                        ${notif.gameTitle ? ` | Game: ${notif.gameTitle}` : ''}
+                                        ${notif.currentPrice ? ` | Price: €${notif.currentPrice}` : ''}
+                                    </small>
+                                </div>
+                                <div>
+                                    ${!notif.isRead ? `<button class="btn btn-small" onclick="markAsRead('${data.userId}', '${notif.id}')">Mark Read</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function displayPriceAlerts(data) {
+            const container = document.getElementById('notification-results');
+            
+            if (!data.alerts || data.alerts.length === 0) {
+                container.innerHTML = '<h3>Price Alerts</h3><p>No active price alerts</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <h3>Active Price Alerts for ${data.userId} (${data.alerts.length})</h3>
+                <div class="price-alerts-list">
+                    ${data.alerts.map(alert => `
+                        <div class="price-alert-card" style="
+                            background: #fff3cd;
+                            padding: 15px;
+                            margin: 10px 0;
+                            border-radius: 8px;
+                            border-left: 4px solid #ffc107;
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4>${alert.gameTitle}</h4>
+                                    <p>Alert when price drops to €${alert.targetPrice} or below</p>
+                                    <small>Game ID: ${alert.gameId} | Created: ${new Date(alert.createdAt).toLocaleString()}</small>
+                                </div>
+                                <button class="btn btn-small btn-danger" onclick="deletePriceAlert('${data.userId}', '${alert.id}')">Delete</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function deletePriceAlert(userId, alertId) {
+            const result = await apiCall('notifications', `/notifications/${userId}/price-alerts/${alertId}`, {
+                method: 'DELETE',
+                requireAuth: false
+            });
+            
+            if (result.ok) {
+                showResponse('notification-response', 'Price alert deleted', 'success');
+                getPriceAlerts();
+            } else {
+                showResponse('notification-response', 'Error deleting price alert', 'error');
+            }
+        }
+
+        function getNotificationColor(type) {
+            const colors = {
+                'price_alert': '#4caf50',
+                'new_game': '#2196f3', 
+                'sale': '#ff9800',
+                'recommendation': '#9c27b0'
+            };
+            return colors[type] || '#666';
+        }
+
+
         async function checkAllHealth() {
             const healthContainer = document.getElementById('health-status');
-            healthContainer.innerHTML = '<h3>🔍 Checking Service Status...</h3>';
+            healthContainer.innerHTML = '<h3>Checking Service Status...</h3>';
 
             const services = [
                 { name: 'Authentication Service', key: 'auth', endpoint: '/auth/health' },
@@ -1000,7 +1224,7 @@
                 { name: 'Collection Management Service', key: 'collection', endpoint: '/collection/health' }
             ];
 
-            let statusHTML = '<h3>🔧 Service Status</h3><div style="display: grid; gap: 10px;">';
+            let statusHTML = '<h3>Service Status</h3><div style="display: grid; gap: 10px;">';
 
             for (const service of services) {
                 const result = await apiCall(service.key, service.endpoint, { 

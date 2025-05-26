@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+  namespace: gameportal
+  labels:
+    app: notification
+    tier: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+        tier: backend
+    spec:
+      containers:
+      - name: notification
+        image: notification-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3004
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /notifications/health
+            port: 3004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /notifications/health
+            port: 3004
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://gameportal:password123@mongo-svc:27017/gameportal"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-svc
+  namespace: gameportal
+  labels:
+    app: notification
+spec:
+  selector:
+    app: notification
+  ports:
+  - port: 80
+    targetPort: 3004
+    name: http
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: notification-hpa
+  namespace: gameportal
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

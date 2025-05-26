@@ -41,3 +41,14 @@ spec:
   selector:
     matchLabels:
       app: collection-management
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-pdb
+  namespace: gameportal
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification
