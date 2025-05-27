@@ -16,13 +16,9 @@ data:
             - 'game-catalog-svc.gameportal.svc.cluster.local:3000'
             - 'price-comparison-svc.gameportal.svc.cluster.local:80'
             - 'collection-management-service.gameportal.svc.cluster.local:80'
-        metrics_path: '/health'
+            - 'notification-svc.gameportal.svc.cluster.local:80'
+        metrics_path: '/metrics'
         scrape_interval: 30s
-
-      - job_name: 'mongodb'
-        static_configs:
-          - targets: ['mongo-svc.gameportal.svc.cluster.local:27017']
-        scrape_interval: 60s
 ---
 apiVersion: apps/v1
 kind: Deployment

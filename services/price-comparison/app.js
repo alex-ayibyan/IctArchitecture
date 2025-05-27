@@ -1,12 +1,38 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import { connect, Schema, model } from 'mongoose';
+import client from 'prom-client';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(json());
+
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const serviceUp = new client.Gauge({
+  name: 'price_service_up',
+  help: 'Price service availability'
+});
+
+const totalPrices = new client.Gauge({
+  name: 'price_total_entries',
+  help: 'Total price entries'
+});
+
+register.registerMetric(serviceUp);
+register.registerMetric(totalPrices);
+
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error);
+  }
+});
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://mongo-svc:27017/gameportal';
 console.log('MongoDB URI:', mongoUri);
@@ -16,9 +42,11 @@ connect(mongoUri, {
   useUnifiedTopology: true,
 }).then(() => {
   console.log('Connected to MongoDB');
+  serviceUp.set(1);
   initializeSampleData();
 }).catch(err => {
   console.error('MongoDB connection error:', err);
+  serviceUp.set(0);
 });
 
 const GameSchema = new Schema({

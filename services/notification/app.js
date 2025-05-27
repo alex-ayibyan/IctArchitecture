@@ -4,9 +4,41 @@ const mongoose = require('mongoose');
 
 const app = express();
 const port = process.env.PORT || 3004;
+const client = require('prom-client');
 
 app.use(cors());
 app.use(express.json());
+
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const serviceUp = new client.Gauge({
+  name: 'notification_service_up',
+  help: 'Notification service availability'
+});
+
+const totalNotifications = new client.Gauge({
+  name: 'notification_total_count',
+  help: 'Total notifications'
+});
+
+const totalPriceAlerts = new client.Gauge({
+  name: 'notification_price_alerts_count',
+  help: 'Total active price alerts'
+});
+
+register.registerMetric(serviceUp);
+register.registerMetric(totalNotifications);
+register.registerMetric(totalPriceAlerts);
+
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error);
+  }
+});
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://mongo-svc:27017/gameportal';
 console.log('MongoDB URI:', mongoUri);
@@ -16,9 +48,11 @@ mongoose.connect(mongoUri, {
   useUnifiedTopology: true,
 }).then(() => {
   console.log('Connected to MongoDB');
+  serviceUp.set(1);
   initializeSampleNotifications();
 }).catch(err => {
   console.error('MongoDB connection error:', err);
+  serviceUp.set(0);
 });
 
 const NotificationSchema = new mongoose.Schema({

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const client = require('prom-client');
 
 const app = express();
 const port = 3000;
@@ -8,10 +9,93 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.01, 0.1, 0.5, 1, 2, 5]
+});
+
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code']
+});
+
+const serviceUp = new client.Gauge({
+  name: 'catalog_service_up',
+  help: 'Game catalog service availability'
+});
+
+const totalGames = new client.Gauge({
+  name: 'catalog_total_games',
+  help: 'Total number of games in catalog'
+});
+
+const dbConnectionStatus = new client.Gauge({
+  name: 'catalog_database_connected',
+  help: 'Database connection status'
+});
+
+register.registerMetric(httpRequestDuration);
+register.registerMetric(httpRequestsTotal);
+register.registerMetric(serviceUp);
+register.registerMetric(totalGames);
+register.registerMetric(dbConnectionStatus);
+
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer({
+    method: req.method,
+    route: req.path
+  });
+  
+  res.on('finish', () => {
+    end({ status_code: res.statusCode });
+    httpRequestsTotal.inc({
+      method: req.method,
+      route: req.path,
+      status_code: res.statusCode
+    });
+  });
+  
+  next();
+});
+
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error);
+  }
+});
+
+async function updateGameCount() {
+  try {
+    const count = await Game.countDocuments();
+    totalGames.set(count);
+  } catch (error) {
+    console.error('Error counting games:', error);
+  }
+}
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongo-svc:27017/gameportal';
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => {
+    console.log('Connected to MongoDB');
+    dbConnectionStatus.set(1);
+    serviceUp.set(1);
+    updateGameCount();
+    setInterval(updateGameCount, 60000);
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    dbConnectionStatus.set(0);
+    serviceUp.set(0);
+  });
 
 const gameSchema = new mongoose.Schema({
   _id: {
@@ -148,6 +232,8 @@ app.get('/games/health', async (req, res) => {
     const dbState = mongoose.connection.readyState;
     if (dbState === 1) {
       await Game.findOne().limit(1);
+      serviceUp.set(1);
+      dbConnectionStatus.set(1);
       res.json({
         status: 'healthy',
         database: 'connected',
@@ -157,6 +243,8 @@ app.get('/games/health', async (req, res) => {
       throw new Error('Database not connected');
     }
   } catch (error) {
+    serviceUp.set(0);
+    dbConnectionStatus.set(0);
     res.status(503).json({
       status: 'unhealthy',
       database: 'disconnected',

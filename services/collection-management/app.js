@@ -1,12 +1,68 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const client = require('prom-client');
+
 
 const app = express();
 const port = process.env.PORT || 3003;
 
 app.use(cors());
 app.use(express.json());
+
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code']
+});
+
+const serviceUp = new client.Gauge({
+  name: 'collection_service_up',
+  help: 'Collection service availability'
+});
+
+const totalCollectionItems = new client.Gauge({
+  name: 'collection_total_items',
+  help: 'Total items in all collections'
+});
+
+register.registerMetric(httpRequestDuration);
+register.registerMetric(serviceUp);
+register.registerMetric(totalCollectionItems);
+
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer({
+    method: req.method,
+    route: req.path
+  });
+  
+  res.on('finish', () => {
+    end({ status_code: res.statusCode });
+  });
+  
+  next();
+});
+
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end(error);
+  }
+});
+
+async function updateCollectionCount() {
+  try {
+    const count = await CollectionItem.countDocuments();
+    totalCollectionItems.set(count);
+  } catch (error) {
+    console.error('Error counting collection items:', error);
+  }
+}
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://mongo-svc:27017/gameportal';
 console.log('MongoDB URI:', mongoUri);
@@ -16,9 +72,13 @@ mongoose.connect(mongoUri, {
   useUnifiedTopology: true,
 }).then(() => {
   console.log('Connected to MongoDB');
+  serviceUp.set(1);
+  updateCollectionCount();
+  setInterval(updateCollectionCount, 60000);
   initializeSampleCollections();
 }).catch(err => {
   console.error('MongoDB connection error:', err);
+  serviceUp.set(0);
 });
 
 const CollectionItemSchema = new mongoose.Schema({
@@ -90,6 +150,7 @@ async function initializeSampleCollections() {
 }
 
 app.get('/collection/health', (req, res) => {
+  serviceUp.set(1);
   res.status(200).json({ status: 'healthy' });
 });
 
